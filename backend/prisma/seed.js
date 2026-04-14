@@ -35,7 +35,7 @@ async function main() {
       where: { email: 'student@quiz.com' },
       update: {},
       create: {
-        name: 'Dev Kumar',
+        name: 'Dev Siwach',
         email: 'student@quiz.com',
         passwordHash: studentPasswordHash,
         role: 'STUDENT',
