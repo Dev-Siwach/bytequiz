@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Environments
+.env
+.env.*
+
+# Logs and PIDs
+*.log
+*.pid
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+frontend/dist/
+
+# Databases
+*.db
+*.sqlite
+dev.db
+
+# OS Files
+.DS_Store
+Thumbs.db

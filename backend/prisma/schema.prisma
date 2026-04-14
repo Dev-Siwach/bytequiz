@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         String       @default("STUDENT")
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  quizzes      Quiz[]       @relation("CreatedBy")
+  submissions  Submission[]
+  rankings     Ranking[]
+}
+
+model Quiz {
+  id          String       @id @default(cuid())
+  title       String
+  description String       @default("")
+  isPublished Boolean      @default(false)
+  createdBy   User         @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  questions   Question[]
+  submissions Submission[]
+  rankings    Ranking[]
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text          String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption String   // must be one of: "A", "B", "C", "D"
+  explanation   String   @default("") // teacher-written explanation, optional
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+model Submission {
+  id            String             @id @default(cuid())
+  studentId     String
+  student       User               @relation(fields: [studentId], references: [id])
+  quizId        String
+  quiz          Quiz               @relation(fields: [quizId], references: [id])
+  timeTakenSecs Int                // seconds from quiz start to submit
+  score         Float              // percentage: (correct / total) * 100
+  totalQ        Int
+  correctQ      Int
+  submittedAt   DateTime           @default(now())
+
+  answers       SubmissionAnswer[]
+  ranking       Ranking?
+
+  @@unique([studentId, quizId]) // one submission per student per quiz
+}
+
+model SubmissionAnswer {
+  id           String     @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId   String
+  chosenOption String     // "A", "B", "C", or "D"
+  isCorrect    Boolean
+}
+
+model Ranking {
+  id           String     @id @default(cuid())
+  quizId       String
+  quiz         Quiz       @relation(fields: [quizId], references: [id])
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id])
+  submissionId String     @unique
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  rank         Int
+  score        Float
+  timeTakenSecs Int
+
+  @@unique([quizId, studentId])
+}
