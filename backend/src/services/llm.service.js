@@ -3,7 +3,7 @@ const callLLM = async (prompt) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: process.env.LLM_MODEL || 'gemma4:e4b',
+      model: process.env.LLM_MODEL || 'gemma4-local',
       prompt,
       stream: false,
     }),
