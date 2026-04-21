@@ -57,7 +57,7 @@ model Submission {
   studentId     String
   student       User               @relation(fields: [studentId], references: [id])
   quizId        String
-  quiz          Quiz               @relation(fields: [quizId], references: [id])
+  quiz          Quiz               @relation(fields: [quizId], references: [id], onDelete: Cascade)
   timeTakenSecs Int                // seconds from quiz start to submit
   score         Float              // percentage: (correct / total) * 100
   totalQ        Int
@@ -82,11 +82,11 @@ model SubmissionAnswer {
 model Ranking {
   id           String     @id @default(cuid())
   quizId       String
-  quiz         Quiz       @relation(fields: [quizId], references: [id])
+  quiz         Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
   studentId    String
   student      User       @relation(fields: [studentId], references: [id])
   submissionId String     @unique
-  submission   Submission @relation(fields: [submissionId], references: [id])
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   rank         Int
   score        Float
   timeTakenSecs Int
