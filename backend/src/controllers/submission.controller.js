@@ -68,7 +68,16 @@ const submit = async (req, res, next) => {
       return {
         ...ans,
         correctOption: question.correctOption,
-        explanation: question.explanation
+        explanation: question.explanation,
+        question: {
+          text: question.text,
+          optionA: question.optionA,
+          optionB: question.optionB,
+          optionC: question.optionC,
+          optionD: question.optionD,
+          correctOption: question.correctOption,
+          explanation: question.explanation
+        }
       };
     });
 
@@ -121,7 +130,16 @@ const getMySubmission = async (req, res, next) => {
           chosenOption: ans.chosenOption,
           isCorrect: ans.isCorrect,
           correctOption: question.correctOption,
-          explanation: question.explanation
+          explanation: question.explanation,
+          question: {
+            text: question.text,
+            optionA: question.optionA,
+            optionB: question.optionB,
+            optionC: question.optionC,
+            optionD: question.optionD,
+            correctOption: question.correctOption,
+            explanation: question.explanation
+          }
         };
       })
     };
@@ -156,4 +174,76 @@ const getQuizSubmissions = async (req, res, next) => {
   }
 };
 
-module.exports = { submit, getMySubmission, getQuizSubmissions };
+const getSubmissionById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    const submission = await prisma.submission.findUnique({
+      where: { id },
+      include: {
+        answers: true,
+        quiz: {
+          include: { questions: true }
+        }
+      }
+    });
+
+    if (!submission) {
+      const err = new Error('Submission not found');
+      err.status = 404;
+      throw err;
+    }
+
+    // Students can only see their own submissions
+    if (userRole === 'STUDENT' && submission.studentId !== userId) {
+      const err = new Error('Forbidden');
+      err.status = 403;
+      throw err;
+    }
+
+    // Teachers can only see submissions for quizzes they created
+    if (userRole === 'TEACHER' && submission.quiz.createdById !== userId) {
+      const err = new Error('Forbidden');
+      err.status = 403;
+      throw err;
+    }
+
+    const data = {
+      id: submission.id,
+      quizId: submission.quizId,
+      timeTakenSecs: submission.timeTakenSecs,
+      score: submission.score,
+      totalQ: submission.totalQ,
+      correctQ: submission.correctQ,
+      submittedAt: submission.submittedAt,
+      answers: submission.answers.map(ans => {
+        const question = submission.quiz.questions.find(q => q.id === ans.questionId);
+        return {
+          id: ans.id,
+          questionId: ans.questionId,
+          chosenOption: ans.chosenOption,
+          isCorrect: ans.isCorrect,
+          correctOption: question.correctOption,
+          explanation: question.explanation,
+          question: {
+            text: question.text,
+            optionA: question.optionA,
+            optionB: question.optionB,
+            optionC: question.optionC,
+            optionD: question.optionD,
+            correctOption: question.correctOption,
+            explanation: question.explanation
+          }
+        };
+      })
+    };
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { submit, getMySubmission, getQuizSubmissions, getSubmissionById };

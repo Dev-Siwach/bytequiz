@@ -16,38 +16,12 @@ const QuizResult = () => {
   useEffect(() => {
     const fetchResult = async () => {
       try {
-        // Spec says GET /api/submissions/my/:quizId.
-        // But we only have submissionId in URL. Wait, can we get submission by ID?
-        // Let's assume we can GET /api/quizzes to find our submission or maybe the API has an undocumented way, 
-        // wait, the spec says "where submissionId comes from the API response". 
-        // But how to fetch the submission itself? "Fetch GET /api/submissions/my/:quizId (or use the submission data from the previous POST response stored in state/localStorage temporarily)."
-        // Let's try to get it by fetching quizzes and finding the matching submission, or actually `GET /api/submissions/my/:quizId` requires quizId.
-        // Let's check `api.get('/quizzes')` to find all, then fetch my submissions.
-        // Or wait, if we only have submissionId, how do we get the quizId?
-        // Let's fetch all my submissions? No endpoint for that.
-        // Actually, we can fetch all quizzes, then fetch `GET /api/submissions/my/:q.id` until we find the one with `id === submissionId`.
-        
-        const qRes = await api.get('/quizzes');
-        let mySub = null;
-        let myQuizId = null;
-        
-        for (const q of qRes.data.data) {
-          try {
-            const subRes = await api.get(`/submissions/my/${q.id}`);
-            if (subRes.data.data && subRes.data.data.id === id) {
-              mySub = subRes.data.data;
-              myQuizId = q.id;
-              break;
-            }
-          } catch (e) {}
-        }
-        
-        if (!mySub) throw new Error("Submission not found");
-        
-        setSubmission(mySub);
+        const subRes = await api.get(`/submissions/${id}`);
+        const subData = subRes.data.data;
+        setSubmission(subData);
         
         try {
-          const rRes = await api.get(`/rankings/${myQuizId}/mine`);
+          const rRes = await api.get(`/rankings/${subData.quizId}/mine`);
           if (rRes.data.data) setRankInfo(rRes.data.data);
         } catch (e) {}
         
@@ -63,15 +37,8 @@ const QuizResult = () => {
   const handleExplain = async (answer) => {
     setExplaining(prev => ({ ...prev, [answer.questionId]: true }));
     try {
-      // Find the question details from the quiz. Wait, submission response includes question details?
-      // "Return the full submission result including per-question isCorrect, correctOption, and explanation."
-      // BUT it might not include option text. 
-      // The POST /api/llm/explain requires: questionText, optionA, B, C, D, correctOption, chosenOption.
-      // So I need the question text. Wait, `GET /api/submissions/my/:quizId` might not include question text if it's just the submission model.
-      // Let's fetch `GET /api/quizzes/:quizId` to get the question texts.
-      const qRes = await api.get(`/quizzes/${submission.quizId}`);
-      const quizData = qRes.data.data;
-      const question = quizData.questions.find(q => q.id === answer.questionId);
+      const question = answer.question;
+      if (!question) throw new Error("Question details not available for explanation");
 
       const res = await api.post('/llm/explain', {
         questionText: question.text,
@@ -79,7 +46,7 @@ const QuizResult = () => {
         optionB: question.optionB,
         optionC: question.optionC,
         optionD: question.optionD,
-        correctOption: answer.correctOption || question.correctOption, // might need to be passed down
+        correctOption: answer.correctOption || question.correctOption,
         chosenOption: answer.chosenOption
       });
       setExplanations(prev => ({ ...prev, [answer.questionId]: res.data.data || res.data }));
