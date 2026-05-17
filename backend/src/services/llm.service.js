@@ -1,12 +1,18 @@
-const callLLM = async (prompt) => {
+const callLLM = async (prompt, format = null) => {
+  const bodyData = {
+    model: process.env.LLM_MODEL || 'batiai/gemma4-e2b:q4',
+    prompt,
+    stream: false,
+  };
+  
+  if (format) {
+    bodyData.format = format;
+  }
+
   const response = await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: process.env.LLM_MODEL || 'gemma4-local',
-      prompt,
-      stream: false,
-    }),
+    body: JSON.stringify(bodyData),
   });
 
   if (!response.ok) {

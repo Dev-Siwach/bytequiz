@@ -11,7 +11,8 @@ const QuizForm = ({ isEdit }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([{
-    text: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A', explanation: ''
+    text: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A', explanation: '',
+    enhancementPrompt: '', enhancing: false
   }]);
   
   const [loading, setLoading] = useState(isEdit);
@@ -32,7 +33,12 @@ const QuizForm = ({ isEdit }) => {
           setTitle(q.title);
           setDescription(q.description || '');
           if (q.questions && q.questions.length > 0) {
-            setQuestions(q.questions);
+            // Add UI state fields
+            setQuestions(q.questions.map(quest => ({
+              ...quest,
+              enhancementPrompt: '',
+              enhancing: false
+            })));
           }
         } catch (err) {
           setError(err.response?.data?.message || 'Failed to load quiz');
@@ -46,7 +52,8 @@ const QuizForm = ({ isEdit }) => {
 
   const handleAddQuestion = () => {
     setQuestions([...questions, {
-      text: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A', explanation: ''
+      text: '', optionA: '', optionB: '', optionC: '', optionD: '', correctOption: 'A', explanation: '',
+      enhancementPrompt: '', enhancing: false
     }]);
   };
 
@@ -75,6 +82,47 @@ const QuizForm = ({ isEdit }) => {
     setQuestions(newQ);
   };
 
+  const handleEnhanceQuestion = async (index) => {
+    const q = questions[index];
+    if (!q.text.trim()) {
+      alert("Please enter question text before enhancing.");
+      return;
+    }
+
+    const newQ = [...questions];
+    newQ[index].enhancing = true;
+    setQuestions(newQ);
+
+    try {
+      const res = await api.post('/llm/enhance', {
+        question: {
+          text: q.text,
+          optionA: q.optionA,
+          optionB: q.optionB,
+          optionC: q.optionC,
+          optionD: q.optionD,
+          correctOption: q.correctOption,
+          explanation: q.explanation
+        },
+        enhancementPrompt: q.enhancementPrompt
+      });
+
+      const enhanced = res.data.data;
+      const updatedQuestions = [...questions];
+      updatedQuestions[index] = {
+        ...updatedQuestions[index],
+        ...enhanced,
+        enhancing: false
+      };
+      setQuestions(updatedQuestions);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to enhance question');
+      const updatedQuestions = [...questions];
+      updatedQuestions[index].enhancing = false;
+      setQuestions(updatedQuestions);
+    }
+  };
+
   const handleGenerateAI = async () => {
     if (!aiTopic || aiCount < 1 || aiCount > 10) {
       alert("Please provide a topic and a count between 1 and 10.");
@@ -93,7 +141,9 @@ const QuizForm = ({ isEdit }) => {
           optionC: g.optionC || '',
           optionD: g.optionD || '',
           correctOption: g.correctOption || 'A',
-          explanation: g.explanation || ''
+          explanation: g.explanation || '',
+          enhancementPrompt: '',
+          enhancing: false
         }));
         
         // If we only have 1 empty question, replace it. Otherwise append.
@@ -140,7 +190,17 @@ const QuizForm = ({ isEdit }) => {
         title,
         description,
         isPublished: publishStatus,
-        questions: questions.map((q, idx) => ({ ...q, order: idx }))
+        questions: questions.map((q, idx) => ({
+          id: q.id,
+          text: q.text,
+          optionA: q.optionA,
+          optionB: q.optionB,
+          optionC: q.optionC,
+          optionD: q.optionD,
+          correctOption: q.correctOption,
+          explanation: q.explanation,
+          order: idx
+        }))
       };
 
       if (isEdit) {
@@ -226,6 +286,28 @@ const QuizForm = ({ isEdit }) => {
                   placeholder="Question text" 
                   style={{ minHeight: '60px' }}
                 />
+              </div>
+
+              <div className="mb-3 p-3" style={{ background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                <div className="d-flex gap-2 align-center">
+                  <div style={{ flex: 1 }}>
+                    <input 
+                      type="text" 
+                      value={q.enhancementPrompt || ''} 
+                      onChange={e => updateQuestion(idx, 'enhancementPrompt', e.target.value)}
+                      placeholder="What kind of enhancement? (e.g. 'make it harder', 'add real-world context') - or leave empty"
+                      style={{ fontSize: '14px', marginBottom: 0 }}
+                    />
+                  </div>
+                  <button 
+                    className="btn-secondary" 
+                    style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: '13px', background: '#e2e8f0' }}
+                    onClick={() => handleEnhanceQuestion(idx)}
+                    disabled={q.enhancing}
+                  >
+                    {q.enhancing ? 'Enhancing...' : '✨ Enhance with AI'}
+                  </button>
+                </div>
               </div>
 
               <div className="d-flex flex-col gap-2 mb-3">

@@ -1,15 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Spinner from '../../components/Spinner';
 import ErrorMessage from '../../components/ErrorMessage';
 
 const StudentDashboard = () => {
+  const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState([]);
   const [submissions, setSubmissions] = useState({});
   const [rankings, setRankings] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const handleRedo = async (quizId) => {
+    if (!window.confirm('Are you sure you want to redo this quiz? Your previous score and ranking will be deleted.')) {
+      return;
+    }
+    
+    try {
+      await api.delete(`/submissions/${quizId}/redo`);
+      navigate(`/student/quiz/${quizId}`);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to redo quiz');
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,7 +89,16 @@ const StudentDashboard = () => {
               </div>
               <div>
                 {isSubmitted ? (
-                  <Link to={`/student/result/${submissions[q.id].id}`} className="btn-secondary" style={{ display: 'inline-block' }}>Already submitted</Link>
+                  <div className="d-flex gap-2">
+                    <Link to={`/student/result/${submissions[q.id].id}`} className="btn-secondary" style={{ display: 'inline-block' }}>View Result</Link>
+                    <button 
+                      onClick={() => handleRedo(q.id)} 
+                      className="btn-primary" 
+                      style={{ background: '#f59e0b', borderColor: '#f59e0b' }}
+                    >
+                      Redo Quiz
+                    </button>
+                  </div>
                 ) : (
                   <Link to={`/student/quiz/${q.id}`} className="btn-primary" style={{ display: 'inline-block' }}>Take Quiz</Link>
                 )}

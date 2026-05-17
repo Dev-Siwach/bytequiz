@@ -246,4 +246,34 @@ const getSubmissionById = async (req, res, next) => {
   }
 };
 
-module.exports = { submit, getMySubmission, getQuizSubmissions, getSubmissionById };
+const resetSubmission = async (req, res, next) => {
+  try {
+    const { quizId } = req.params;
+    const studentId = req.user.id;
+
+    // Delete the submission. Cascade will handle SubmissionAnswer and Ranking entries.
+    // However, Ranking entries that might be linked to this student for this quiz 
+    // also need to be cleared or the recalculation will handle them.
+    // The Ranking table has a unique(quizId, studentId) constraint.
+    
+    await prisma.submission.delete({
+      where: {
+        studentId_quizId: { studentId, quizId }
+      }
+    });
+
+    // After deletion, recalculate rankings for the quiz to update other students' ranks
+    await recalculateRankings(quizId);
+
+    res.status(200).json({ success: true, message: 'Submission reset successfully' });
+  } catch (error) {
+    // If not found, still return success or appropriate error
+    if (error.code === 'P2025') {
+      res.status(404).json({ success: false, message: 'Submission not found' });
+    } else {
+      next(error);
+    }
+  }
+};
+
+module.exports = { submit, getMySubmission, getQuizSubmissions, getSubmissionById, resetSubmission };

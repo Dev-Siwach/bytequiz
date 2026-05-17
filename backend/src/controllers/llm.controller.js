@@ -85,8 +85,16 @@ Example format:
   }
 ]`;
 
-    const raw = await callLLM(prompt);
-    const cleaned = raw.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+    const raw = await callLLM(prompt, 'json');
+    console.log('Raw LLM Response:', raw);
+    
+    let cleaned = raw.trim();
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (match) {
+      cleaned = match[0];
+    } else {
+      cleaned = cleaned.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
     
     let questions;
     try {
@@ -103,4 +111,76 @@ Example format:
   }
 };
 
-module.exports = { explain, generate };
+const enhance = async (req, res, next) => {
+  try {
+    const { question, enhancementPrompt } = req.body;
+
+    if (!question || !question.text) {
+      const err = new Error('Question text is required for enhancement');
+      err.status = 400;
+      throw err;
+    }
+
+    const genericPrompt = "Improve this question by making it clearer, more challenging, or better phrased. Ensure the options remain consistent with the correct answer.";
+    const userPrompt = enhancementPrompt && enhancementPrompt.trim() ? enhancementPrompt : genericPrompt;
+
+    const prompt = `You are a quiz question enhancer. Your task is to take the following multiple choice question and improve it based on this instruction: "${userPrompt}".
+
+Original Question: ${question.text}
+Options:
+A) ${question.optionA || '(empty)'}
+B) ${question.optionB || '(empty)'}
+C) ${question.optionC || '(empty)'}
+D) ${question.optionD || '(empty)'}
+Correct Option: ${question.correctOption || 'A'}
+Explanation: ${question.explanation || '(empty)'}
+
+Return your response as a valid JSON object only. No explanation, no preamble, no markdown fences. Just the raw JSON object.
+
+The object must have these exact fields:
+- "text": the improved question text (string)
+- "optionA": improved option A text (string)
+- "optionB": improved option B text (string)
+- "optionC": improved option C text (string)
+- "optionD": improved option D text (string)
+- "correctOption": one of "A", "B", "C", or "D" (string)
+- "explanation": an improved explanation (string)
+
+Format:
+{
+  "text": "...",
+  "optionA": "...",
+  "optionB": "...",
+  "optionC": "...",
+  "optionD": "...",
+  "correctOption": "...",
+  "explanation": "..."
+}`;
+
+    const raw = await callLLM(prompt, 'json');
+    console.log('Raw LLM Response:', raw);
+    
+    let cleaned = raw.trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      cleaned = match[0];
+    } else {
+      cleaned = cleaned.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+    
+    let enhancedQuestion;
+    try {
+      enhancedQuestion = JSON.parse(cleaned);
+    } catch (e) {
+      const err = new Error('LLM returned malformed JSON. Try again.');
+      err.status = 502;
+      throw err;
+    }
+
+    res.status(200).json({ success: true, data: enhancedQuestion });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { explain, generate, enhance };
