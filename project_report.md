@@ -285,13 +285,13 @@ The application is designed to be easily deployed using standard shell scripts (
 * Environment Variables: Sensitive data like the `DATABASE_URL` and `JWT_SECRET` are managed via a `.env` file.
 * Background Processes: The application uses `nohup` to run the backend and frontend servers in the background, ensuring they persist after the terminal session ends.
 
-## 3.8 Security Implementation
+## 3.9 Security Implementation
 
 * CORS (Cross-Origin Resource Sharing): Configured to only allow requests from authorized origins.
 * Input Validation: Uses `Zod` schemas to validate all incoming request bodies, preventing malformed data from reaching the database.
 * Protected Routes: Frontend routes are shielded so that unauthorized users cannot even see the dashboard interfaces.
 
-## 3.9 Development Methodology
+## 3.10 Development Methodology
 
 The project followed an iterative development lifecycle:
 
@@ -301,7 +301,7 @@ The project followed an iterative development lifecycle:
 4.  Integration: Connecting the AI services via Ollama.
 5.  Testing: Conducting functional and security tests.
 
-## 3.10 Chapter Summary
+## 3.11 Chapter Summary
 
 This chapter provided a comprehensive look at the internal workings of ByteQuiz. By detailing the architecture, database design, and security measures, it established the technical foundation of the project. The next chapter will present the results of the implementation and discuss the system's performance.
 
